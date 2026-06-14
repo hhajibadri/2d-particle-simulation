@@ -11,7 +11,9 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
@@ -48,17 +50,52 @@ public class Main extends Application {
         primaryStage.setTitle("2D Particle Simulation");
 
         Pane root = new Pane();
+
         Scene scene = new Scene(root, WIDTH, HEIGHT);
 
         canvas = new Canvas(WIDTH, HEIGHT);
-        gc = canvas.getGraphicsContext2D();
+        canvas.widthProperty().bind(root.widthProperty());
+        canvas.heightProperty().bind(root.heightProperty());
 
-        root.getChildren().add(canvas);
+        gc = canvas.getGraphicsContext2D();
 
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        scene.setOnMouseClicked((mouseEvent) -> {
+        VBox controls = new VBox(10.0);
+        Button addButton = new Button("Add objects");
+        Button clearButton = new Button("Clear Objects");
+        controls.getChildren().addAll(addButton, clearButton);
+
+        root.getChildren().addAll(canvas, controls);
+
+        controls.layoutXProperty().bind(
+            root.widthProperty()
+                .subtract(controls.widthProperty())
+                .subtract(10.0)
+        );
+        controls.setLayoutY(10.0);
+
+        addButton.setOnAction(event -> {
+            CIRCLES.add(new Circle(
+                random.nextDouble(10.0, canvas.getWidth() - 10.0),
+                random.nextDouble(10.0, canvas.getHeight() - 10.0),
+                10.0
+            ));
+            COLORS.add(Color.rgb(
+                random.nextInt(0, 256),
+                random.nextInt(0, 256),
+                random.nextInt(0, 256),
+                1.0)
+            );
+        });
+
+        clearButton.setOnAction(event -> {
+            CIRCLES.clear();
+            COLORS.clear();
+        });
+
+        canvas.setOnMouseClicked((mouseEvent) -> {
             mouseX = mouseEvent.getX();
             mouseY = mouseEvent.getY();
             mouseClicked = true;
@@ -90,7 +127,7 @@ public class Main extends Application {
                 }
 
                 for (Circle circle : CIRCLES) {
-                    Circle.resolveWallCollision(circle, WIDTH, HEIGHT);
+                    Circle.resolveWallCollision(circle, canvas.getWidth(), canvas.getHeight());
                 }
 
                 render();
@@ -102,7 +139,7 @@ public class Main extends Application {
     private void render() {
 
         gc.setFill(Color.WHITE);
-        gc.fillRect(0, 0, WIDTH, HEIGHT);
+        gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         for (int i = 0; i < CIRCLES.size(); ++i) {
             Circle circle = CIRCLES.get(i);

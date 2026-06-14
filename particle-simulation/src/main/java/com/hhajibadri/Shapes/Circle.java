@@ -6,9 +6,9 @@ public class Circle {
   public double x, y;
   public double vx, vy;
 
-  public Circle(double px, double py, double radius) {
-    this.x = px;
-    this.y = py;
+  public Circle(double x, double y, double radius) {
+    this.x = x;
+    this.y = y;
     this.radius = radius;
     vx = vy = 0.0;
   }
@@ -62,20 +62,20 @@ public class Circle {
 
   }
 
-  public static void resolveWallCollision(Circle a, int endX, int endY) {
+  public static void resolveWallCollision(Circle a, double width, double height) {
     if (a.x - a.radius < 0) {
       a.x = a.radius;
       a.vx = -a.vx;
-    } else if (a.x + a.radius >= endX) {
-      a.x = endX - a.radius;
+    } else if (a.x + a.radius >= width) {
+      a.x = width - a.radius;
       a.vx = -a.vx;
     }
 
     if (a.y - a.radius < 0) {
       a.y = a.radius;
       a.vy = -a.vy;
-    } else if (a.y + a.radius >= endY) {
-      a.y = endY - a.radius;
+    } else if (a.y + a.radius >= height) {
+      a.y = height - a.radius;
       a.vy = -a.vy;
     }
   }
