@@ -12,26 +12,24 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 public class Main extends Application {
-
-    private long lastTime = 0;
     
-    private double mouseX = 0.0;
-    private double mouseY = 0.0;
-    private boolean mouseClicked = false;
-    
-    private final double gravity = 100.0;
+    private static final List<Circle> CIRCLES = new ArrayList<>();
+    private static final List<Color> COLORS = new ArrayList<>();
 
-    private final List<Circle> CIRCLES = new ArrayList<>();
-    private final List<Color> COLORS = new ArrayList<>();
+    private static long lastTime = 0;
 
-    private final int WIDTH = 800;
-    private final int HEIGHT = 600;
+    private static double mouseX = 0.0;
+    private static double mouseY = 0.0;
+
+    private static boolean mousePrimaryClicked = false;
+    private static boolean mouseSecondaryDown = false;
 
     private Canvas canvas;
     private GraphicsContext gc;
@@ -51,9 +49,9 @@ public class Main extends Application {
 
         Pane root = new Pane();
 
-        Scene scene = new Scene(root, WIDTH, HEIGHT);
+        Scene scene = new Scene(root, 800, 600);
 
-        canvas = new Canvas(WIDTH, HEIGHT);
+        canvas = new Canvas(800, 600);
         canvas.widthProperty().bind(root.widthProperty());
         canvas.heightProperty().bind(root.heightProperty());
 
@@ -70,24 +68,18 @@ public class Main extends Application {
         root.getChildren().addAll(canvas, controls);
 
         controls.layoutXProperty().bind(
-            root.widthProperty()
-                .subtract(controls.widthProperty())
-                .subtract(10.0)
-        );
+                root.widthProperty()
+                        .subtract(controls.widthProperty())
+                        .subtract(10.0));
         controls.setLayoutY(10.0);
 
         addButton.setOnAction(event -> {
-            CIRCLES.add(new Circle(
-                random.nextDouble(10.0, canvas.getWidth() - 10.0),
-                random.nextDouble(10.0, canvas.getHeight() - 10.0),
-                10.0
-            ));
+            CIRCLES.add(Circle.generateRandomCircle(mouseX, mouseX, mouseSecondaryDown));
             COLORS.add(Color.rgb(
-                random.nextInt(0, 256),
-                random.nextInt(0, 256),
-                random.nextInt(0, 256),
-                1.0)
-            );
+                    random.nextInt(0, 256),
+                    random.nextInt(0, 256),
+                    random.nextInt(0, 256),
+                    1.0));
         });
 
         clearButton.setOnAction(event -> {
@@ -95,10 +87,27 @@ public class Main extends Application {
             COLORS.clear();
         });
 
-        canvas.setOnMouseClicked((mouseEvent) -> {
-            mouseX = mouseEvent.getX();
-            mouseY = mouseEvent.getY();
-            mouseClicked = true;
+        canvas.setOnMousePressed(event -> {
+            mouseX = event.getX();
+            mouseY = event.getY();
+            if (event.getButton() == MouseButton.PRIMARY) {
+                mousePrimaryClicked = true;
+            }
+            if (event.getButton() == MouseButton.SECONDARY) {
+                mouseSecondaryDown = true;
+            }
+
+        });
+
+        canvas.setOnMouseReleased(event -> {
+            if (event.getButton() == MouseButton.SECONDARY) {
+                mouseSecondaryDown = false;
+            }
+        });
+
+        canvas.setOnMouseDragged(event -> {
+            mouseX = event.getX();
+            mouseY = event.getY();
         });
 
         lastTime = System.nanoTime();
@@ -110,14 +119,20 @@ public class Main extends Application {
                 double deltaTime = (now - lastTime) / 1e9;
                 lastTime = now;
 
-                if (mouseClicked) {
-                    CIRCLES.add(new Circle(mouseX, mouseY, 10.0));
+                if (mousePrimaryClicked) {
+                    CIRCLES.add(new Circle(mouseX, mouseY));
                     COLORS.add(Color.rgb(random.nextInt(0, 256), random.nextInt(0, 256), random.nextInt(0, 256), 1.0));
-                    mouseClicked = false;
+                    mousePrimaryClicked = false;
+                }
+
+                if (mouseSecondaryDown) {
+                    for (Circle circle : CIRCLES) {
+                        circle.applySpringForceFromSource(deltaTime, mouseX, mouseY);
+                    }
                 }
 
                 for (Circle circle : CIRCLES) {
-                    circle.update(deltaTime, gravity);
+                    circle.update(deltaTime);
                 }
 
                 for (int i = 0; i < CIRCLES.size(); ++i) {
@@ -127,7 +142,7 @@ public class Main extends Application {
                 }
 
                 for (Circle circle : CIRCLES) {
-                    Circle.resolveWallCollision(circle, canvas.getWidth(), canvas.getHeight());
+                    circle.resolveWallCollision(canvas.getWidth(), canvas.getHeight());
                 }
 
                 render();
@@ -145,7 +160,11 @@ public class Main extends Application {
             Circle circle = CIRCLES.get(i);
             Color color = COLORS.get(i);
             gc.setFill(color);
-            gc.fillOval(circle.x - circle.radius, circle.y - circle.radius, circle.radius * 2.0, circle.radius * 2.0);
+            gc.fillOval(
+                circle.getX() - circle.getRadius(),
+                circle.getY() - circle.getRadius(),
+                circle.getRadius() * 2.0,
+                circle.getRadius() * 2.0);
         }
 
     }
