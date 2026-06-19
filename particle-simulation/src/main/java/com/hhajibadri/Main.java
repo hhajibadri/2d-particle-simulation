@@ -2,6 +2,7 @@ package com.hhajibadri;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
 import com.hhajibadri.Shapes.Circle;
@@ -23,13 +24,13 @@ public class Main extends Application {
     private static final List<Circle> CIRCLES = new ArrayList<>();
     private static final List<Color> COLORS = new ArrayList<>();
 
-    private static long lastTime = 0;
+    private long lastTime = 0;
 
-    private static double mouseX = 0.0;
-    private static double mouseY = 0.0;
+    private double mouseX = 0.0;
+    private double mouseY = 0.0;
 
-    private static boolean mousePrimaryClicked = false;
-    private static boolean mouseSecondaryDown = false;
+    private boolean mousePrimaryClicked = false;
+    private boolean mouseSecondaryDown = false;
 
     private Canvas canvas;
     private GraphicsContext gc;
@@ -74,12 +75,16 @@ public class Main extends Application {
         controls.setLayoutY(10.0);
 
         addButton.setOnAction(event -> {
-            CIRCLES.add(Circle.generateRandomCircle(mouseX, mouseX, mouseSecondaryDown));
-            COLORS.add(Color.rgb(
-                    random.nextInt(0, 256),
-                    random.nextInt(0, 256),
-                    random.nextInt(0, 256),
-                    1.0));
+            Optional<Circle> randomCircle = Circle.generateRandomCircle(canvas.getWidth(), canvas.getHeight(), true);
+            if (randomCircle.isPresent()) {
+                Circle circle = randomCircle.get();
+                CIRCLES.add(circle);
+                COLORS.add(Color.rgb(
+                        random.nextInt(0, 256),
+                        random.nextInt(0, 256),
+                        random.nextInt(0, 256),
+                        1.0));
+            }
         });
 
         clearButton.setOnAction(event -> {

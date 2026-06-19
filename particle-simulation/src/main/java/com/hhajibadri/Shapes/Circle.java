@@ -11,12 +11,14 @@ public class Circle {
   private static final double SPRING_DAMPING = 10.0;
   private static final double DEFAULT_RADIUS = 10.0;
   private static final double GRAVITY = 100.0;
+  private static final double RESTITUTION = 0.8;
 
   private static final Random random = new Random();
 
   private double x, y;
   private double vx, vy;
   private double radius;
+  private double mass;
 
   public Circle(double x, double y) {
     this(x, y, DEFAULT_RADIUS);
@@ -27,6 +29,7 @@ public class Circle {
     this.y = y;
     this.radius = radius;
     vx = vy = 0.0;
+    mass = radius * radius;
   }
 
   public void update(double dt) {
@@ -59,11 +62,16 @@ public class Circle {
 
     double overlap = minimumCollisionDistance - currentDistance;
 
-    a.x -= nx * overlap * 0.5;
-    a.y -= ny * overlap * 0.5;
+    double invMassA = 1.0 / a.mass;
+    double invMassB = 1.0 / b.mass;
 
-    b.x += nx * overlap * 0.5;
-    b.y += ny * overlap * 0.5;
+    double totalInvMass = invMassA + invMassB;
+
+    a.x -= nx * overlap * (invMassA / totalInvMass);
+    a.y -= ny * overlap * (invMassA / totalInvMass);
+
+    b.x += nx * overlap * (invMassB / totalInvMass);
+    b.y += ny * overlap * (invMassB / totalInvMass);
 
     double rvx = b.vx - a.vx;
     double rvy = b.vy - a.vy;
@@ -73,32 +81,33 @@ public class Circle {
       return;
     }
 
-    double j = -velAlongNormal;
+    double j = -(1.0 + RESTITUTION) * velAlongNormal;
+    j /= totalInvMass;
     double impulseX = j * nx;
     double impulseY = j * ny;
 
-    a.vx -= impulseX;
-    a.vy -= impulseY;
-    b.vx += impulseX;
-    b.vy += impulseY;
+    a.vx -= impulseX * invMassA;
+    a.vy -= impulseY * invMassA;
+    b.vx += impulseX * invMassB;
+    b.vy += impulseY * invMassB;
 
   }
 
   public void resolveWallCollision(double width, double height) {
     if (x - radius < 0) {
       x = radius;
-      vx = -vx;
+      vx *= -RESTITUTION;
     } else if (x + radius >= width) {
       x = width - radius;
-      vx = -vx;
+      vx *= -RESTITUTION;
     }
 
     if (y - radius < 0) {
       y = radius;
-      vy = -vy;
+      vy *= -RESTITUTION;
     } else if (y + radius >= height) {
       y = height - radius;
-      vy = -vy;
+      vy *= -RESTITUTION;
     }
   }
 
@@ -130,34 +139,38 @@ public class Circle {
     double dx = sourceX - x;
     double dy = sourceY - y;
 
-    double ax = dx * SPRING_STIFFNESS - vx * SPRING_DAMPING;
-    double ay = dy * SPRING_STIFFNESS - vy * SPRING_DAMPING;
+    double ax = (dx * SPRING_STIFFNESS - vx * SPRING_DAMPING);
+    double ay = (dy * SPRING_STIFFNESS - vy * SPRING_DAMPING);
 
     vx += ax * dt;
     vy += ay * dt;
   }
 
-  public static Circle generateRandomCircle(double width, double height, boolean randomRadius) {
+  public static Optional<Circle> generateRandomCircle(double width, double height, boolean randomRadius) {
 
-    double radius;
+    double minDimension = Math.min(width, height);
+    double radius = DEFAULT_RADIUS;
 
     if (randomRadius) {
-      radius = random.nextDouble(1.0, Math.min(width, height));
-    } else {
-      radius = DEFAULT_RADIUS;
+      double maxRadius = Math.max(DEFAULT_RADIUS + Double.MIN_NORMAL, minDimension * 0.125);
+      radius = random.nextDouble(DEFAULT_RADIUS, maxRadius);
     }
 
-    return new Circle(
+    if (minDimension <= 2.0 * radius) {
+      return Optional.empty();
+    }
+    
+    return Optional.of(
+      new Circle(
         random.nextDouble(radius, width - radius),
         random.nextDouble(radius, height - radius),
-        radius);
-
+        radius
+      )
+    );
   }
 
   public static double euclideanDistance(double x1, double y1, double x2, double y2) {
-    double dx = x2 - x1;
-    double dy = y2 - y1;
-    return Math.sqrt(dx * dx + dy * dy);
+    return Math.sqrt(euclideanDistanceSquared(x1, y1, x2, y2));
   }
 
   public static double euclideanDistanceSquared(double x1, double y1, double x2, double y2) {
@@ -167,9 +180,7 @@ public class Circle {
   }
 
   public boolean contains(double sourceX, double sourceY) {
-    double dx = x - sourceX;
-    double dy = y - sourceY;
-    return dx * dx + dy * dy <= radius * radius;
+    return euclideanDistanceSquared(x, y, sourceX, sourceY) <= radius * radius;
   }
 
   public double getX() {
@@ -210,6 +221,7 @@ public class Circle {
 
   public void setRadius(double radius) {
     this.radius = radius;
+    mass = radius * radius;
   }
 
 }
